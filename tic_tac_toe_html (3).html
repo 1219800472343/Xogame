@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมส์ OX น่ารัก</title>
+<style>
+  @keyframes float {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
+  }
+  body { font-family: 'Kanit', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #ffe4e1, #ffb6c1); overflow: hidden; position: relative; }
+  .bubble { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.3); animation: float 4s ease-in-out infinite; }
+  #game-container { text-align: center; background: #fff0f5; padding: 20px; border-radius: 20px; box-shadow: 0 8px 15px rgba(0,0,0,0.2); z-index: 1; }
+  #game { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 10px; margin-top: 10px; }
+  .cell { width: 100px; height: 100px; background: #fffaf0; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; cursor: pointer; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.1s; }
+  .cell:hover { transform: scale(1.1); }
+  .cell.winning { background: #ffeb3b; }
+  #status { font-size: 1.2rem; margin-bottom: 10px; color: #ff69b4; }
+  #controls { margin-top: 15px; }
+  button, select { margin: 5px; padding: 8px 12px; font-size: 1rem; border-radius: 10px; border: none; cursor: pointer; }
+  button { background-color: #ff69b4; color: white; transition: background 0.2s; }
+  button:hover { background-color: #ff85c1; }
+  select { background-color: #fff0f5; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="game-container">
+  <h2>เกมส์ OX น่ารัก</h2>
+  <div id="status">ตา: X</div>
+  <div id="game"></div>
+  <div id="controls">
+    <button onclick="resetGame()">เริ่มใหม่</button>
+    <select id="mode">
+      <option value="human">เล่นกับเพื่อน</option>
+      <option value="bot">เล่นกับบอท</option>
+    </select>
+    <select id="difficulty">
+      <option value="easy">ง่าย</option>
+      <option value="medium">ปานกลาง</option>
+      <option value="hard">ยาก</option>
+    </select>
+  </div>
+</div>
+<script>
+// สร้างลูกเล่นพื้นหลัง
+for(let i=0;i<30;i++){
+  const bubble = document.createElement('div');
+  bubble.className='bubble';
+  const size=Math.random()*20+10;
+  bubble.style.width=size+'px';
+  bubble.style.height=size+'px';
+  bubble.style.left=Math.random()*window.innerWidth+'px';
+  bubble.style.top=Math.random()*window.innerHeight+'px';
+  bubble.style.animationDuration=(2+Math.random()*3)+'s';
+  document.body.appendChild(bubble);
+}
+
+let board = Array(9).fill(null);
+let xIsNext = true;
+let gameOver = false;
+const gameDiv = document.getElementById('game');
+const statusDiv = document.getElementById('status');
+const modeSelect = document.getElementById('mode');
+const diffSelect = document.getElementById('difficulty');
+function render() {
+  gameDiv.innerHTML = '';
+  board.forEach((cell, i) => {
+    const div = document.createElement('div');
+    div.className = 'cell';
+    div.textContent = cell ? cell : '';
+    div.addEventListener('click', () => handleClick(i));
+    gameDiv.appendChild(div);
+  });
+  const winner = checkWinner();
+  if (winner) {
+    if (winner === 'draw') {
+      statusDiv.textContent = 'เสมอ!';
+    } else {
+      statusDiv.innerHTML = winner + ' ชนะ! 🎉 ยินดีด้วยนะ!';
+    }
+    gameOver = true;
+    highlightWinning();
+  } else {
+    statusDiv.textContent = 'ตา: ' + (xIsNext ? 'X' : 'O');
+    if (modeSelect.value === 'bot' && !xIsNext) setTimeout(botMove, 500);
+  }
+}
+function handleClick(i) {
+  if (board[i] || gameOver || (modeSelect.value==='bot' && !xIsNext)) return;
+  board[i] = xIsNext ? 'X' : 'O';
+  xIsNext = !xIsNext;
+  render();
+}
+function botMove() {
+  if (gameOver) return;
+  const difficulty = diffSelect.value;
+  let move;
+  const empty = board.map((v,i)=>v===null?i:null).filter(v=>v!==null);
+  if(difficulty==='easy'){ move = empty[Math.floor(Math.random()*empty.length)]; }
+  else if(difficulty==='medium'){ move = empty[Math.floor(Math.random()*empty.length)]; }
+  else{ move = minimax(board, 'O').index; }
+  board[move] = 'O';
+  xIsNext = !xIsNext;
+  render();
+}
+function checkWinner(){
+  const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b,c] of lines){
+    if(board[a] && board[a]===board[b] && board[a]===board[c]) return board[a];
+  }
+  return board.every(Boolean)?'draw':null;
+}
+function highlightWinning(){
+  const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  lines.forEach(([a,b,c])=>{
+    if(board[a] && board[a]===board[b] && board[a]===board[c]){
+      gameDiv.children[a].classList.add('winning');
+      gameDiv.children[b].classList.add('winning');
+      gameDiv.children[c].classList.add('winning');
+    }
+  });
+}
+function resetGame(){
+  board = Array(9).fill(null);
+  xIsNext = true;
+  gameOver = false;
+  render();
+}
+function minimax(newBoard, player){
+  const avail = newBoard.map((v,i)=>v===null?i:null).filter(v=>v!==null);
+  const winner = checkWinnerBoard(newBoard);
+  if(winner==='O') return {score:10};
+  if(winner==='X') return {score:-10};
+  if(avail.length===0) return {score:0};
+  const moves = [];
+  for(const i of avail){
+    newBoard[i]=player;
+    const result = minimax(newBoard, player==='O'?'X':'O');
+    moves.push({index:i, score:result.score});
+    newBoard[i]=null;
+  }
+  return player==='O'?moves.reduce((a,b)=>a.score>b.score?a:b):moves.reduce((a,b)=>a.score<b.score?a:b);
+}
+function checkWinnerBoard(b){
+  const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b1,c] of lines){ if(b[a] && b[a]===b[b1] && b[a]===b[c]) return b[a];}
+  return null;
+}
+render();
+</script>
+</body>
+</html>
